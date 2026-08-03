@@ -48,6 +48,7 @@ jobs:
                  - **Steps to reproduce** (for bugs): list them if not provided, ask the user to provide them if it's a bug
                  - **Expected behavior** (for bugs): what should happen
                  - **Suggested labels**: the labels you applied and why
+                 - ** Branch created for the issue **
                - A closing note thanking the contributor
 
             Use the `gh` CLI to apply labels and post the comment. Example commands:
