@@ -4,16 +4,150 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // I - cyan
-  '#ffd54f', // O - yellow
-  '#ba68c8', // T - purple
-  '#81c784', // S - green
-  '#e57373', // Z - red
-  '#64b5f6', // J - azul pálido
-  '#ffb74d', // L - orange
-];
+const SKINS = {
+  retro: {
+    label: 'Retro',
+    colors: [
+      null,
+      '#4dd0e1', // I - cyan
+      '#ffd54f', // O - yellow
+      '#ba68c8', // T - purple
+      '#81c784', // S - green
+      '#e57373', // Z - red
+      '#64b5f6', // J - azul pálido
+      '#ffb74d', // L - orange
+    ],
+    // bloques cuadrados planos: comportamiento original del juego
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+      context.globalAlpha = 1;
+    },
+  },
+  neon: {
+    label: 'Neón',
+    colors: [
+      null,
+      '#00e5ff',
+      '#fff176',
+      '#e040fb',
+      '#69f0ae',
+      '#ff5252',
+      '#448aff',
+      '#ffab40',
+    ],
+    // fondo oscuro + resplandor (shadowBlur/shadowColor) alrededor del bloque
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      const px = x * size + 1;
+      const py = y * size + 1;
+      const s = size - 2;
+      context.save();
+      context.globalAlpha = alpha ?? 1;
+      context.shadowBlur = size * 0.5;
+      context.shadowColor = color;
+      context.fillStyle = 'rgba(8, 8, 18, 0.9)';
+      context.fillRect(px, py, s, s);
+      context.shadowBlur = 0;
+      context.strokeStyle = color;
+      context.lineWidth = 2;
+      context.strokeRect(px + 1, py + 1, s - 2, s - 2);
+      context.fillStyle = color;
+      context.globalAlpha = (alpha ?? 1) * 0.35;
+      context.fillRect(px + 3, py + 3, Math.max(0, s - 6), Math.max(0, s - 6));
+      context.restore();
+    },
+  },
+  pastel: {
+    label: 'Pastel',
+    colors: [
+      null,
+      '#a8dee8',
+      '#ffe3a3',
+      '#d7bbe0',
+      '#b8e4c0',
+      '#f4b7b7',
+      '#b7c8ee',
+      '#f6cba0',
+    ],
+    // paleta suave + esquinas redondeadas (roundRect o dibujo manual)
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      const px = x * size + 1;
+      const py = y * size + 1;
+      const s = size - 2;
+      const radius = Math.min(s / 2, Math.max(3, size * 0.18));
+      context.save();
+      context.globalAlpha = alpha ?? 1;
+      context.beginPath();
+      if (typeof context.roundRect === 'function') {
+        context.roundRect(px, py, s, s, radius);
+      } else {
+        context.moveTo(px + radius, py);
+        context.lineTo(px + s - radius, py);
+        context.quadraticCurveTo(px + s, py, px + s, py + radius);
+        context.lineTo(px + s, py + s - radius);
+        context.quadraticCurveTo(px + s, py + s, px + s - radius, py + s);
+        context.lineTo(px + radius, py + s);
+        context.quadraticCurveTo(px, py + s, px, py + s - radius);
+        context.lineTo(px, py + radius);
+        context.quadraticCurveTo(px, py, px + radius, py);
+        context.closePath();
+      }
+      context.fillStyle = color;
+      context.fill();
+      context.fillStyle = 'rgba(255,255,255,0.4)';
+      context.fillRect(px + 2, py + 2, Math.max(0, s - 4), Math.max(0, s * 0.22));
+      context.restore();
+    },
+  },
+  pixel: {
+    label: 'Pixel art',
+    colors: [
+      null,
+      '#4dd0e1',
+      '#ffd54f',
+      '#ba68c8',
+      '#81c784',
+      '#e57373',
+      '#64b5f6',
+      '#ffb74d',
+    ],
+    // bloque plano + patrón de puntos tipo pixel-art
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      if (!colorIndex) return;
+      const color = this.colors[colorIndex];
+      const px = x * size + 1;
+      const py = y * size + 1;
+      const s = size - 2;
+      context.save();
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      context.fillRect(px, py, s, s);
+      context.fillStyle = 'rgba(0,0,0,0.18)';
+      const step = Math.max(3, Math.floor(s / 4));
+      for (let gy = 0; gy < s; gy += step) {
+        const rowOffset = (gy / step) % 2 === 0 ? 0 : step / 2;
+        for (let gx = rowOffset; gx < s; gx += step) {
+          context.fillRect(px + gx, py + gy, step / 2, step / 2);
+        }
+      }
+      context.strokeStyle = 'rgba(0,0,0,0.35)';
+      context.lineWidth = 1;
+      context.strokeRect(px + 0.5, py + 0.5, s - 1, s - 1);
+      context.restore();
+    },
+  },
+};
+
+const VALID_SKINS = Object.keys(SKINS);
 
 const PIECES = [
   null,
@@ -63,7 +197,10 @@ const controlsBtn = document.getElementById('controls-btn');
 const backBtn = document.getElementById('back-btn');
 const startLevelSelect = document.getElementById('start-level-select');
 
+const skinSelect = document.getElementById('skin-select');
+
 let board, current, nextQueue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, piecesUsed, elapsedTime, combo, maxCombo, scoreSaved;
+let currentSkin = 'retro';
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -191,16 +328,12 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
+function getSkin() {
+  return SKINS[currentSkin] || SKINS.retro;
+}
+
 function drawBlock(context, x, y, colorIndex, size, alpha) {
-  if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  getSkin().drawBlock(context, x, y, colorIndex, size, alpha);
 }
 
 function drawGrid() {
@@ -568,6 +701,38 @@ function toggleTheme() {
 
 themeToggle.addEventListener('click', toggleTheme);
 applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
+
+const SKIN_KEY = 'tetris-skin';
+
+function readStoredSkin() {
+  let stored = null;
+  try {
+    stored = localStorage.getItem(SKIN_KEY);
+  } catch (err) {
+    stored = null;
+  }
+  return VALID_SKINS.includes(stored) ? stored : 'retro';
+}
+
+function applySkin(skin) {
+  currentSkin = VALID_SKINS.includes(skin) ? skin : 'retro';
+  document.documentElement.setAttribute('data-skin', currentSkin);
+  if (skinSelect) skinSelect.value = currentSkin;
+  try {
+    localStorage.setItem(SKIN_KEY, currentSkin);
+  } catch (err) {
+    // almacenamiento no disponible: la preferencia simplemente no persiste
+  }
+  if (board) {
+    draw();
+    drawNext();
+  }
+}
+
+if (skinSelect) {
+  skinSelect.addEventListener('change', e => applySkin(e.target.value));
+}
+applySkin(readStoredSkin());
 
 // El juego no arranca hasta pulsar "Jugar" en la pantalla de inicio;
 // gameOver=true bloquea el manejador de teclado mientras tanto.

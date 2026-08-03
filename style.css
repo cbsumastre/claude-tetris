@@ -44,6 +44,29 @@
   --grid-line: #d7d9e6;
 }
 
+/* ---- Skins visuales ---- */
+[data-skin="neon"] {
+  --board-border: #2ee6ff;
+  --board-bg: #050510;
+  --grid-line: #14142a;
+}
+
+[data-skin="pastel"] {
+  --board-border: #e3c9e8;
+  --board-bg: #fbf5fb;
+  --grid-line: #ecdff0;
+}
+
+[data-theme="light"][data-skin="neon"] {
+  --board-border: #3b5bdb;
+  --board-bg: #0d0d1a;
+  --grid-line: #1c1c30;
+}
+
+[data-skin="pixel"] {
+  --board-border: #6b6b85;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -60,10 +83,16 @@ body {
   position: relative;
 }
 
-.theme-toggle {
+.top-controls {
   position: absolute;
   top: 0;
   right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-toggle {
   background: var(--kbd-bg);
   border: 1px solid var(--kbd-border);
   border-radius: 6px;
@@ -76,6 +105,22 @@ body {
 }
 
 .theme-toggle:hover {
+  background: var(--btn-hover);
+}
+
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.skin-select:hover {
   background: var(--btn-hover);
 }
 
