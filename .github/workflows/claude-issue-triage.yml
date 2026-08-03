@@ -58,7 +58,10 @@ jobs:
                - Área (elige cero o más, los que apliquen): area-rendering, area-gameplay,
                  area-controls, area-scoring, area-performance
                Aplica los labels con `gh issue edit ${{ github.event.issue.number }} --add-label "..."`.
-            3. Redacta un diagnóstico en español con este formato exacto:
+            3. Redacta un diagnóstico en español, en formato Markdown válido para que
+               GitHub lo renderice correctamente en el comentario (encabezados, negritas,
+               listas y bloques de código con la sintaxis estándar de GitHub-flavored
+               Markdown), con este formato exacto:
 
                ## 🤖 Diagnóstico automático
 
