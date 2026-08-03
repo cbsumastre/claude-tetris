@@ -8,7 +8,7 @@ Lista de mejoras organizadas por categoría, lista para copiar como Issues en Gi
 
 - [ ] **Wall kicks (SRS)**: implementar el Super Rotation System para permitir rotaciones cerca de paredes y otras piezas.
 - [ ] **Hold piece**: permitir guardar una pieza para usarla más tarde.
-- [ ] **Next queue**: mostrar las 3-5 piezas siguientes, no solo la próxima.
+- [x] **Next queue**: mostrar las 3-5 piezas siguientes, no solo la próxima.
 - [ ] **Ghost piece**: mostrar una sombra que indique dónde caerá la pieza actual.
 - [ ] **7-bag randomizer**: usar el sistema de bolsa de 7 piezas en vez de aleatorio puro.
 - [ ] **Soft drop / Hard drop**: diferenciar ambos tipos de caída con su puntuación correspondiente.
@@ -33,7 +33,7 @@ Lista de mejoras organizadas por categoría, lista para copiar como Issues en Gi
 - [ ] **HUD mejorado**: indicadores más claros/animados de nivel, líneas y puntuación.
 - [ ] **Animaciones al limpiar líneas**: flash, shake u otros efectos visuales.
 - [ ] **Diseño responsive**: que se vea bien en móvil y escritorio.
-- [ ] **Pantalla de Game Over**: resumen de estadísticas (piezas usadas, tiempo, PPS).
+- [x] **Pantalla de Game Over**: resumen de estadísticas (piezas usadas, tiempo, PPS).
 
 ---
 
