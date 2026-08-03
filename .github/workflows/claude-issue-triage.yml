@@ -1,0 +1,76 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    # Evita que el workflow se re-dispare a sí mismo si en el futuro se automatizan ediciones del issue
+    if: github.event.sender.type != 'Bot'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Ensure labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          declare -a LABELS=(
+            "bug|d73a4a|Algo no funciona como se espera"
+            "enhancement|a2eeef|Nueva funcionalidad o mejora"
+            "question|d876e3|Pregunta o duda"
+            "documentation|0075ca|Mejoras o correcciones en la documentación"
+            "area-rendering|fbca04|Renderizado en canvas (tablero, piezas, ghost)"
+            "area-gameplay|0e8a16|Lógica del juego (colisiones, rotación, piezas)"
+            "area-controls|5319e7|Entrada de teclado / controles"
+            "area-scoring|c5def5|Puntuación, niveles y velocidad"
+            "area-performance|e99695|Rendimiento / fluidez del bucle de juego"
+          )
+          for entry in "${LABELS[@]}"; do
+            IFS='|' read -r name color desc <<< "$entry"
+            gh label create "$name" --color "$color" --description "$desc" --force \
+              --repo "${{ github.repository }}"
+          done
+
+      - name: Run Claude issue triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --allowed-tools "Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh issue view:*),Bash(gh api:*),Read,Grep,Glob"
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} de este repositorio (${{ github.repository }}).
+
+            Contexto del proyecto: juego de Tetris en HTML/JS puro (ver CLAUDE.md y game.js
+            en la raíz del repo) — sin build/tests. Usa ese contexto para fundamentar el diagnóstico.
+
+            1. Lee el título y cuerpo del issue.
+            2. Clasifícalo usando ÚNICAMENTE labels ya existentes en el repo (no inventes ni crees labels):
+               - Tipo (elige exactamente uno): bug, enhancement, question, documentation
+               - Área (elige cero o más, los que apliquen): area-rendering, area-gameplay,
+                 area-controls, area-scoring, area-performance
+               Aplica los labels con `gh issue edit ${{ github.event.issue.number }} --add-label "..."`.
+            3. Redacta un diagnóstico en español con este formato exacto:
+
+               ## 🤖 Diagnóstico automático
+
+               **Resumen**: (1-2 frases)
+               **Componente(s) afectado(s)**: funciones/ficheros concretos de game.js implicados
+               **Análisis**: causa probable o naturaleza de la petición
+               **Propuesta de aproximación**: pasos de alto nivel para implementar la solución
+               (sin escribir código todavía)
+
+               <!-- claude-issue-triage -->
+
+            4. Antes de comentar, busca entre los comentarios existentes del issue uno que
+               contenga el marcador `<!-- claude-issue-triage -->`. Si existe, actualízalo
+               (edítalo vía `gh api repos/${{ github.repository }}/issues/comments/<id> -X PATCH -f body=...`)
+               en lugar de crear uno nuevo. Si no existe, publica un comentario nuevo con `gh issue comment`.
