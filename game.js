@@ -40,10 +40,11 @@ const levelEl = document.getElementById('level');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
+const overlayStats = document.getElementById('overlay-stats');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 
-let board, current, nextQueue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, nextQueue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, piecesUsed, elapsedTime;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -139,6 +140,7 @@ function softDrop() {
 }
 
 function lockPiece() {
+  piecesUsed++;
   merge();
   clearLines();
   spawn();
@@ -226,11 +228,25 @@ function drawNext() {
   });
 }
 
+function formatTime(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  const seconds = elapsedTime / 1000;
+  const pps = seconds > 0 ? (piecesUsed / seconds).toFixed(2) : '0.00';
+  overlayStats.innerHTML = `
+    <p>Piezas: ${piecesUsed}</p>
+    <p>Tiempo: ${formatTime(elapsedTime)}</p>
+    <p>PPS: ${pps}</p>
+  `;
   overlay.classList.remove('hidden');
 }
 
@@ -244,6 +260,7 @@ function togglePause() {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
+    overlayStats.innerHTML = '';
     overlay.classList.remove('hidden');
   }
 }
@@ -251,6 +268,7 @@ function togglePause() {
 function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
+  elapsedTime += dt;
   dropAccum += dt;
   if (dropAccum >= dropInterval) {
     dropAccum = 0;
@@ -274,6 +292,8 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  piecesUsed = 0;
+  elapsedTime = 0;
   lastTime = performance.now();
   nextQueue = [];
   fillQueue();

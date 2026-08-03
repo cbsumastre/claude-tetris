@@ -203,6 +203,15 @@ kbd {
   color: var(--accent);
 }
 
+.overlay-stats {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  color: var(--controls-color);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 #restart-btn {
   margin-top: 8px;
   background: var(--btn-bg);
