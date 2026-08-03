@@ -1,11 +1,13 @@
-name: Claude Issue Formatter
+name: Claude Issue Triage
 
 on:
   issues:
     types: [opened, edited]
 
 jobs:
-  format-issue:
+  triage:
+    # Evita que el workflow se re-dispare a sí mismo si en el futuro se automatizan ediciones del issue
+    if: github.event.sender.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -17,42 +19,90 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Format issue with Claude
+      - name: Ensure area labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          declare -a LABELS=(
+            "area-rendering|fbca04|Renderizado en canvas (tablero, piezas, ghost)"
+            "area-gameplay|0e8a16|Lógica del juego (colisiones, rotación, piezas)"
+            "area-controls|5319e7|Entrada de teclado / controles"
+            "area-scoring|c5def5|Puntuación, niveles y velocidad"
+            "area-performance|e99695|Rendimiento / fluidez del bucle de juego"
+          )
+          for entry in "${LABELS[@]}"; do
+            IFS='|' read -r name color desc <<< "$entry"
+            gh label create "$name" --color "$color" --description "$desc" --force \
+              --repo "${{ github.repository }}"
+          done
+
+      - name: Analizar y triar el issue con Claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--allowedTools Bash(gh issue *)"
+          claude_args: |
+            --allowedTools "Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh api:*),Read,Grep,Glob"
           prompt: |
-            You are a GitHub issue formatter for a Tetris game project (vanilla JS/HTML/CSS, no dependencies).
+            Analiza el issue #${{ github.event.issue.number }} de este repositorio (${{ github.repository }}),
+            que fue ${{ github.event.action }} por @${{ github.event.issue.user.login }}.
 
-            An issue was just ${{ github.event.action }} with the following details:
-            - Issue number: #${{ github.event.issue.number }}
-            - Title: ${{ github.event.issue.title }}
-            - Body: ${{ github.event.issue.body }}
-            - Author: ${{ github.event.issue.user.login }}
+            Contexto del proyecto: juego de Tetris en HTML/JS puro, sin build ni tests
+            (ver CLAUDE.md y game.js en la raíz del repo). Léelos para fundamentar tu análisis
+            en componentes y funciones reales del código, no en generalidades.
 
-            Your tasks:
-            1. **Add labels** based on the issue content. Use only these labels:
-               - `bug` — something is broken or behaving incorrectly
-               - `enhancement` — new feature or improvement request
-               - `question` — asking for help or clarification
-               - `documentation` — docs need updating
-               - `good first issue` — simple, beginner-friendly task
-               - `duplicate` — if it seems like a known/repeated problem
+            Tareas:
 
-            2. **Post a comment** on the issue that includes:
-               - A brief, friendly summary of what the issue is about (1-2 sentences)
-               - A "Formatted Report" section with:
-                 - **Type**: Bug / Feature Request / Question / Other
-                 - **Summary**: one clear sentence describing the problem or request
-                 - **Steps to reproduce** (for bugs): list them if not provided, ask the user to provide them if it's a bug
-                 - **Expected behavior** (for bugs): what should happen
-                 - **Suggested labels**: the labels you applied and why
-                 - ** Branch created for the issue **
-               - A closing note thanking the contributor
+            1. Lee el título y el cuerpo del issue.
 
-            Use the `gh` CLI to apply labels and post the comment. Example commands:
-              gh issue edit ${{ github.event.issue.number }} --add-label "bug" --repo ${{ github.repository }}
-              gh issue comment ${{ github.event.issue.number }} --body "..." --repo ${{ github.repository }}
+            2. Etiqueta usando ÚNICAMENTE estos labels (no inventes ni crees otros):
+               - Tipo (elige exactamente uno): `bug`, `enhancement`, `question`, `documentation`
+               - Área (elige cero o más, las que apliquen): `area-rendering`, `area-gameplay`,
+                 `area-controls`, `area-scoring`, `area-performance`
+               - `good first issue` si es una tarea sencilla y acotada
+               - `duplicate` si ya existe un issue equivalente (compruébalo con
+                 `gh issue list --repo ${{ github.repository }} --state all`)
+               - `wontfix` SOLO si concluyes en el paso 3 que la petición no es implementable
+               Aplica los labels con:
+                 gh issue edit ${{ github.event.issue.number }} --add-label "..." --repo ${{ github.repository }}
 
-            Be concise, helpful, and friendly. Do not over-engineer the response.
+            3. Evalúa si lo solicitado se puede implementar en este proyecto (HTML/JS puro,
+               sin backend, sin dependencias, sin build). Considera NO implementable, por ejemplo:
+               - Requiere backend, base de datos, autenticación de usuarios u otra infraestructura
+                 que no existe en este repo.
+               - Es ambiguo o le falta información imprescindible para actuar (indica qué falta
+                 en vez de asumirlo).
+               - Contradice la arquitectura descrita en CLAUDE.md.
+               - Ya está implementado (indica dónde, con fichero y función).
+
+            4. Publica un comentario en el issue escrito en español y en **Markdown válido de
+               GitHub** (encabezados `##`, negritas `**...**`, listas con `-`, bloques de código
+               con triple backtick si citas código) para que se renderice correctamente en la UI.
+               Usa exactamente esta estructura:
+
+               ## 🤖 Análisis automático
+
+               **Resumen**: (1-2 frases sobre qué pide el issue)
+               **¿Es implementable?**: Sí / No
+               **Componente(s) afectado(s)**: funciones/ficheros concretos de game.js implicados
+
+               Si es implementable, añade a continuación:
+               **Propuesta de implementación**: pasos de alto nivel para llevarla a cabo
+               (sin escribir código todavía)
+
+               Si NO es implementable, añade en su lugar:
+               **Motivo**: explicación concreta y honesta de por qué no puede realizarse
+               tal y como está planteada, y qué información o cambio haría falta para
+               poder reconsiderarla
+
+               **Labels aplicadas**: lista de los labels que aplicaste y por qué
+
+               <!-- claude-issue-triage -->
+
+            5. Antes de comentar, busca entre los comentarios existentes del issue uno que
+               contenga el marcador `<!-- claude-issue-triage -->`. Si existe, actualízalo
+               (vía `gh api repos/${{ github.repository }}/issues/comments/<id> -X PATCH -f body=...`)
+               en lugar de crear uno nuevo, para no duplicar comentarios en cada edición.
+               Si no existe, publica un comentario nuevo con `gh issue comment`.
+
+            Sé conciso y directo. No escribas código, ni crees ramas ni pull requests: esta
+            tarea es solo de análisis y triaje.
