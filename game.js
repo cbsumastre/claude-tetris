@@ -44,6 +44,16 @@ const overlayStats = document.getElementById('overlay-stats');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 
+const pauseMenu = document.getElementById('pause-menu');
+const pauseMain = document.getElementById('pause-main');
+const pauseControlsView = document.getElementById('pause-controls');
+const pauseControlsList = document.getElementById('pause-controls-list');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const controlsBtn = document.getElementById('controls-btn');
+const backBtn = document.getElementById('back-btn');
+const startLevelSelect = document.getElementById('start-level-select');
+
 let board, current, nextQueue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, piecesUsed, elapsedTime;
 
 function createBoard() {
@@ -254,15 +264,32 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    hidePauseMenu();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlayStats.innerHTML = '';
-    overlay.classList.remove('hidden');
+    showPauseMenu();
   }
+}
+
+function showPauseMain() {
+  pauseMain.classList.remove('hidden');
+  pauseControlsView.classList.add('hidden');
+}
+
+function showPauseControls() {
+  pauseMain.classList.add('hidden');
+  pauseControlsView.classList.remove('hidden');
+}
+
+function showPauseMenu() {
+  showPauseMain();
+  pauseMenu.classList.remove('hidden');
+}
+
+function hidePauseMenu() {
+  pauseMenu.classList.add('hidden');
 }
 
 function loop(ts) {
@@ -287,10 +314,10 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = getStartLevel();
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   piecesUsed = 0;
   elapsedTime = 0;
@@ -300,13 +327,29 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  hidePauseMenu();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
+const MENU_BLOCKED_CODES = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'];
+
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (gameOver) return;
+    if (e.code === 'Escape') e.preventDefault();
+    togglePause();
+    return;
+  }
+  if (paused || gameOver) {
+    // Con el menú abierto (o en game over) los controles de juego no actúan
+    // y evitamos que las flechas/espacio hagan scroll de la página, salvo
+    // que el usuario esté interactuando con el propio selector de nivel.
+    if (paused && MENU_BLOCKED_CODES.includes(e.code) && e.target !== startLevelSelect) {
+      e.preventDefault();
+    }
+    return;
+  }
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -330,6 +373,43 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+resumeBtn.addEventListener('click', () => {
+  if (paused) togglePause();
+});
+
+pauseRestartBtn.addEventListener('click', () => {
+  init();
+});
+
+controlsBtn.addEventListener('click', showPauseControls);
+backBtn.addEventListener('click', showPauseMain);
+
+const START_LEVEL_KEY = 'tetris-start-level';
+const MIN_START_LEVEL = 1;
+const MAX_START_LEVEL = 15;
+
+function getStartLevel() {
+  const raw = localStorage.getItem(START_LEVEL_KEY);
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < MIN_START_LEVEL || n > MAX_START_LEVEL) return MIN_START_LEVEL;
+  return n;
+}
+
+function setStartLevel(n) {
+  localStorage.setItem(START_LEVEL_KEY, String(n));
+}
+
+startLevelSelect.value = String(getStartLevel());
+startLevelSelect.addEventListener('change', () => {
+  const n = parseInt(startLevelSelect.value, 10);
+  if (Number.isFinite(n) && n >= MIN_START_LEVEL && n <= MAX_START_LEVEL) {
+    setStartLevel(n);
+  }
+});
+
+// Reutiliza la lista de controles del panel lateral en la sub-vista del menú de pausa.
+pauseControlsList.innerHTML = document.querySelector('.controls ul').innerHTML;
 
 const THEME_KEY = 'tetris-theme';
 
