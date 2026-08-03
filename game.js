@@ -27,6 +27,8 @@ const PIECES = [
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+const QUEUE_SIZE = 5;
+const NEXT_BLOCK = 20;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -42,7 +44,7 @@ const overlayStats = document.getElementById('overlay-stats');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, piecesUsed, elapsedTime;
+let board, current, nextQueue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, piecesUsed, elapsedTime;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -144,9 +146,13 @@ function lockPiece() {
   spawn();
 }
 
+function fillQueue() {
+  while (nextQueue.length < QUEUE_SIZE) nextQueue.push(randomPiece());
+}
+
 function spawn() {
-  current = next;
-  next = randomPiece();
+  current = nextQueue.shift();
+  fillQueue();
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -211,14 +217,15 @@ function draw() {
 }
 
 function drawNext() {
-  const NB = 30;
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  const shape = next.shape;
-  const offX = Math.floor((4 - shape[0].length) / 2);
-  const offY = Math.floor((4 - shape.length) / 2);
-  for (let r = 0; r < shape.length; r++)
-    for (let c = 0; c < shape[r].length; c++)
-      drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+  nextQueue.forEach((piece, i) => {
+    const shape = piece.shape;
+    const offX = Math.floor((4 - shape[0].length) / 2);
+    const offY = i * 4 + Math.floor((4 - shape.length) / 2);
+    for (let r = 0; r < shape.length; r++)
+      for (let c = 0; c < shape[r].length; c++)
+        drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NEXT_BLOCK);
+  });
 }
 
 function formatTime(ms) {
@@ -288,7 +295,8 @@ function init() {
   piecesUsed = 0;
   elapsedTime = 0;
   lastTime = performance.now();
-  next = randomPiece();
+  nextQueue = [];
+  fillQueue();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
