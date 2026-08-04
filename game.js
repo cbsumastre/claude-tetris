@@ -162,7 +162,9 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 const QUEUE_SIZE = 5;
-const NEXT_BLOCK = 20;
+const NEXT_BLOCK = 12;
+const NEXT_GAP = 6;
+const NEXT_PAD = 6;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -375,15 +377,28 @@ function draw() {
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
 }
 
+function occupiedRowBounds(shape) {
+  let first = -1, last = -1;
+  for (let r = 0; r < shape.length; r++) {
+    if (shape[r].some(v => v)) {
+      if (first === -1) first = r;
+      last = r;
+    }
+  }
+  return { first, last };
+}
+
 function drawNext() {
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  nextQueue.forEach((piece, i) => {
+  let cursorY = NEXT_PAD;
+  nextQueue.forEach(piece => {
     const shape = piece.shape;
+    const { first, last } = occupiedRowBounds(shape);
     const offX = Math.floor((4 - shape[0].length) / 2);
-    const offY = i * 4 + Math.floor((4 - shape.length) / 2);
-    for (let r = 0; r < shape.length; r++)
+    for (let r = first; r <= last; r++)
       for (let c = 0; c < shape[r].length; c++)
-        drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NEXT_BLOCK);
+        drawBlock(nextCtx, offX + c, cursorY / NEXT_BLOCK + (r - first), shape[r][c], NEXT_BLOCK);
+    cursorY += (last - first + 1) * NEXT_BLOCK + NEXT_GAP;
   });
 }
 
