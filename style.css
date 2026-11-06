@@ -79,6 +79,25 @@ body {
   background: var(--btn-hover);
 }
 
+.skin-select {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.skin-select:hover {
+  background: var(--btn-hover);
+}
+
 .game-title {
   text-align: center;
   font-size: 32px;
@@ -138,6 +157,36 @@ body {
   border: 1px solid var(--board-border);
   background: var(--board-bg);
   border-radius: 4px;
+}
+
+/* ---- Skins ---- */
+/* Van después de [data-theme] para que la skin gane sobre el tema */
+[data-skin="neon"] {
+  --board-bg: #05050a;
+  --board-border: #2a2a45;
+  --grid-line: #12122a;
+}
+
+[data-skin="neon"] #board,
+[data-skin="neon"] #next-canvas {
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.15), 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+[data-skin="pastel"] {
+  --board-bg: #fdf6f0;
+  --board-border: #e6d9f0;
+  --grid-line: #f1e6ee;
+}
+
+[data-skin="pastel"] #board,
+[data-skin="pastel"] #next-canvas {
+  border-radius: 16px;
+}
+
+[data-skin="pixel"] #board,
+[data-skin="pixel"] #next-canvas {
+  border-radius: 0;
+  image-rendering: pixelated;
 }
 
 /* ---- Controles ---- */

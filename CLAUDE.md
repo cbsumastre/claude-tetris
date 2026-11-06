@@ -18,5 +18,6 @@ Juego completo en `game.js` (script clásico, sin módulos), cargado por `index.
 - **Colisiones** (`collide`): límites del tablero + solape con celdas ya fijadas.
 - **Ghost piece** (`ghostY`): proyecta la caída final de la pieza actual, se dibuja con alpha 0.2.
 - **Puntuación/nivel**: `LINE_SCORES` `[0,100,300,500,800]` × nivel; nivel sube cada 10 líneas (`clearLines`); velocidad = `max(100, 1000 − (nivel−1)×90)` ms.
+- **Skins** (`currentSkin`): `SKIN_PALETTES` (colores) + `SKIN_DRAWERS` (función de dibujo por bloque) para `retro`/`neon`/`pastel`/`pixel`; `drawBlock` delega según skin. `applySkin` pone `data-skin` en `<html>` (CSS ajusta fondo/rejilla), guarda en `localStorage` (`tetris-skin`) y redibuja sin recargar.
 - **Estado global mutable**: `board`, `current`, `next`, `score`, `lines`, `level`, `paused`, `gameOver`.
 - **Input**: `keydown` global — flechas mover/rotar/soft-drop, Espacio hard-drop, `P` pausa; ignorado si `paused` o `gameOver`.
