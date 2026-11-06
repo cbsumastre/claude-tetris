@@ -43,8 +43,22 @@ const overlayScore = document.getElementById('overlay-score');
 const overlayStats = document.getElementById('overlay-stats');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const pauseOverlay = document.getElementById('pause-overlay');
+const pauseMenu = document.getElementById('pause-menu');
+const pauseControlsView = document.getElementById('pause-controls-view');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseBackBtn = document.getElementById('pause-back-btn');
+const startLevelSelect = document.getElementById('start-level-select');
 
-let board, current, nextQueue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, piecesUsed, elapsedTime;
+const MAX_START_LEVEL = 15;
+
+const RESUME_INPUT_LOCK_MS = 200;
+const START_LEVEL_KEY = 'tetris-start-level';
+
+let board, current, nextQueue, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, piecesUsed, elapsedTime, startLevel, gameStartLevel;
+let inputLockedUntil = 0, ignoreRepeats = false;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -110,7 +124,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = gameStartLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -250,19 +264,54 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
+function showPauseView(view) {
+  const isMenu = view === 'menu';
+  pauseMenu.classList.toggle('hidden', !isMenu);
+  pauseControlsView.classList.toggle('hidden', isMenu);
+  (isMenu ? pauseControlsBtn : pauseBackBtn).focus();
+}
+
+function openPauseMenu() {
+  paused = true;
+  cancelAnimationFrame(animId);
+  showPauseView('menu');
+  pauseOverlay.classList.remove('hidden');
+  resumeBtn.focus();
+}
+
+// Bloquea input del juego un instante tras volver y descarta auto-repeat de teclas mantenidas
+function lockInputBriefly() {
+  if (document.activeElement) document.activeElement.blur();
+  inputLockedUntil = performance.now() + RESUME_INPUT_LOCK_MS;
+  ignoreRepeats = true;
+}
+
+function closePauseMenu() {
+  paused = false;
+  pauseOverlay.classList.add('hidden');
+  lockInputBriefly();
+  lastTime = performance.now();
+  animId = requestAnimationFrame(loop);
+}
+
 function togglePause() {
   if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
+  if (paused) {
+    if (!pauseControlsView.classList.contains('hidden')) showPauseView('menu');
+    else closePauseMenu();
   } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlayStats.innerHTML = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
   }
+}
+
+function populateStartLevelSelect() {
+  for (let lvl = 1; lvl <= MAX_START_LEVEL; lvl++) {
+    const option = document.createElement('option');
+    option.value = lvl;
+    option.textContent = lvl;
+    startLevelSelect.appendChild(option);
+  }
+  startLevelSelect.value = startLevel;
 }
 
 function loop(ts) {
@@ -287,10 +336,11 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  gameStartLevel = startLevel;
+  level = gameStartLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   piecesUsed = 0;
   elapsedTime = 0;
@@ -300,13 +350,24 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseOverlay.classList.add('hidden');
+  lockInputBriefly();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat) togglePause();
+    return;
+  }
   if (paused || gameOver) return;
+  if (e.repeat && ignoreRepeats) return; // tecla mantenida desde antes de volver
+  if (!e.repeat) ignoreRepeats = false;
+  if (performance.now() < inputLockedUntil) {
+    if (e.code === 'Space') e.preventDefault();
+    return;
+  }
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -330,6 +391,22 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+resumeBtn.addEventListener('click', closePauseMenu);
+pauseRestartBtn.addEventListener('click', init);
+pauseControlsBtn.addEventListener('click', () => showPauseView('controls'));
+pauseBackBtn.addEventListener('click', () => showPauseView('menu'));
+startLevelSelect.addEventListener('change', () => {
+  startLevel = Number(startLevelSelect.value);
+  try { localStorage.setItem(START_LEVEL_KEY, startLevel); } catch {}
+});
+
+{
+  let saved = NaN;
+  try { saved = Number(localStorage.getItem(START_LEVEL_KEY)); } catch {}
+  startLevel = saved >= 1 && saved <= MAX_START_LEVEL ? saved : 1;
+}
+populateStartLevelSelect();
 
 const THEME_KEY = 'tetris-theme';
 
